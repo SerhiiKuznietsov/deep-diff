@@ -1,137 +1,83 @@
 const { isObject } = require("../utils/validation");
 const {
-  getNewData,
   enrichWithDataDescribingDifference,
   addDeletedFieldToData,
-  getIterableValue,
   calculatedParentChanges,
-  addUpdatedToAbout,
   addUndefinedChildrenStatus,
-  addDeletedToAbout,
-  addCreatedToAbout,
   setDataChanged,
+} = require("./services/about");
+
+const { calcStatusAndAddToAbout } = require("./services/about");
+const {
+  calcKeyStatus,
+  isCreatedStatus,
   isDeletedStatus,
-} = require("./about-manager");
-const { DELETED, CREATED } = require("./constants");
-
-
-// const getKeyStatus = (newData, oldData, key) => {
-//   const keyInNewData = newData.hasOwnProperty(key);
-//   const keyInOldData = oldData.hasOwnProperty(key);
-
-//   if (keyInNewData && !keyInOldData) return CREATED;
-//   if (!keyInNewData && keyInOldData) return DELETED;
-// };
+  isChangedStatus,
+  isUnchangedStatus,
+  isDeepValuedStatus,
+} = require("./services/status");
+const { getIterableValue } = require("./utils/obj-concat");
+const { Stack } = require("./utils/stack");
 
 exports.getDiff = (oldData, newData) => {
-  const stack = [{ newData, oldData }];
+  const stack = new Stack({ newData, oldData });
 
-  while (true) {
-    const stackItem = stack.pop();
-    if (!stackItem) break;
+  while (stack.size) {
+    const stackItem = stack.get();
 
-    const { newData, oldData, parentData, outerKey } = stackItem;
-    const _about = getNewData(outerKey);
+    const { newData, oldData, parentData, outerKey, outerStatus } = stackItem;
     const { iterableValue, iterableLength } = getIterableValue(
       newData,
       oldData
     );
 
-    enrichWithDataDescribingDifference(newData, parentData, _about);
+    const _about = enrichWithDataDescribingDifference(
+      newData || oldData,
+      parentData,
+      outerKey
+    );
 
-    let newStackItemFlag = false;
+    let notLastLevelFlag = false;
 
     for (let i = 0; i < iterableLength; i++) {
       const key = iterableValue[i];
-      const newValue = newData[key];
-      const oldValue = oldData[key];
-      const keyInNewData = newData.hasOwnProperty(key);
-      const keyInOldData = oldData.hasOwnProperty(key);
-      const isDeep = isObject(newValue) || isObject(oldValue);
+      const newValue = newData !== undefined ? newData[key] : undefined;
+      const oldValue = oldData !== undefined ? oldData[key] : undefined;
+      const isDeepValue = isObject(newValue) || isObject(oldValue);
 
-      if (keyInNewData && keyInOldData && !isDeep && newValue === oldValue) continue;
+      const keyStatus = calcStatusAndAddToAbout(
+        newData,
+        oldData,
+        key,
+        _about,
+        outerStatus
+      );
 
+      if (isUnchangedStatus(keyStatus)) continue;
 
-      if (keyInNewData && !keyInOldData) {
-        addCreatedToAbout(_about, key);
+      const newStackData = {
+        newData: newValue,
+        oldData: oldValue,
+        parentData: newData,
+        outerKey: key,
+      };
 
-        if (isDeep) {
-          inheritedParentStatusBranchHandler({
-            currentData: newValue,
-            parentData: newData,
-            outerKey: key,
-            outerStatusName: CREATED,
-          });
-        }
-        continue;
+      if (
+        isDeepValue &&
+        (isCreatedStatus(keyStatus) || isDeletedStatus(keyStatus))
+      ) {
+        newStackData.outerStatus = keyStatus;
       }
 
-      if (!keyInNewData && keyInOldData) {
-        addDeletedToAbout(_about, key);
-        addDeletedFieldToData(_about, key, oldValue);
+      if (isDeepValue || isDeepValuedStatus(keyStatus)) {
+        notLastLevelFlag = true;
 
-        if (isDeep) {
-          inheritedParentStatusBranchHandler({
-            currentData: oldValue,
-            parentData: newData,
-            outerKey: key,
-            outerStatusName: DELETED,
-          });
-        }
-        continue;
+        stack.add(newStackData);
       }
-
-      if (isDeep) {
-        newStackItemFlag = true;
-        addUndefinedChildrenStatus(_about, key);
-        stack.push({
-          newData: newValue,
-          oldData: oldValue,
-          parentData: newData,
-          outerKey: key,
-        });
-        continue;
-      }
-
-      addUpdatedToAbout(_about, key, oldValue);
     }
 
-    if (!newStackItemFlag) calculatedParentChanges(newData);
+    if (!notLastLevelFlag) calculatedParentChanges(newData);
   }
 
   return newData;
-};
-
-const inheritedParentStatusBranchHandler = (dataItem) => {
-  const stack = [dataItem];
-
-  while (true) {
-    const stackItem = stack.pop();
-    if (!stackItem) break;
-
-    const { currentData, parentData, outerKey, outerStatusName } = stackItem;
-
-    const _about = getNewData(outerKey);
-    enrichWithDataDescribingDifference(currentData, parentData, _about);
-
-    if (isDeletedStatus(outerStatusName))
-      addDeletedFieldToData(parentData, outerKey, currentData);
-
-    const { iterableValue, iterableLength } = getIterableValue(currentData);
-    for (let i = 0; i < iterableLength; i++) {
-      const key = iterableValue[i];
-      const currentValue = currentData[key];
-
-      setDataChanged(_about, key, outerStatusName);
-
-      if (!isObject(currentValue)) continue;
-
-      stack.push({
-        currentData: currentValue,
-        parentData: currentData,
-        outerKey: key,
-        outerStatusName,
-      });
-    }
-  }
 };
