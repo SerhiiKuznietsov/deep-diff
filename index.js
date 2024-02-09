@@ -19,3 +19,5 @@ const func = bindOptions(getDiff, oldData, newData);
 const result = logDiffTime(func);
 
 result;
+
+// TODO - fixed bugs
