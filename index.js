@@ -1,7 +1,7 @@
 "use strict";
 
-const newData = require("./json-data/new.json");
-const oldData = require("./json-data/old.json");
+const newData = require("./json-data/new1.json");
+const oldData = require("./json-data/old1.json");
 
 const { getDiff } = require("./deep-diff-map/index");
 

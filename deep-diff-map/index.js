@@ -1,23 +1,21 @@
 const { isObject } = require("../utils/validation");
 const {
   enrichWithDataDescribingDifference,
-  addDeletedFieldToData,
   calculatedParentChanges,
-  addUndefinedChildrenStatus,
-  setDataChanged,
+  calcStatusAndAddToAbout,
 } = require("./services/about");
-
-const { calcStatusAndAddToAbout } = require("./services/about");
 const {
-  calcKeyStatus,
   isCreatedStatus,
   isDeletedStatus,
-  isChangedStatus,
   isUnchangedStatus,
   isDeepValuedStatus,
 } = require("./services/status");
 const { getIterableValue } = require("./utils/obj-concat");
 const { Stack } = require("./utils/stack");
+
+const getByKeyIfExists = (obj, key) => {
+  return obj !== undefined ? obj[key] : undefined;
+};
 
 exports.getDiff = (oldData, newData) => {
   const stack = new Stack({ newData, oldData });
@@ -41,8 +39,8 @@ exports.getDiff = (oldData, newData) => {
 
     for (let i = 0; i < iterableLength; i++) {
       const key = iterableValue[i];
-      const newValue = newData !== undefined ? newData[key] : undefined;
-      const oldValue = oldData !== undefined ? oldData[key] : undefined;
+      const newValue = getByKeyIfExists(newData, key);
+      const oldValue = getByKeyIfExists(oldData, key);
       const isDeepValue = isObject(newValue) || isObject(oldValue);
 
       const keyStatus = calcStatusAndAddToAbout(

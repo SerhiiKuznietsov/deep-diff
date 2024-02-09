@@ -53,7 +53,11 @@ const addUndefinedChildrenStatus = (_about, key) => {
 };
 
 const removeUndefinedChildrenStatus = (_about, key) => {
-  if (!_about[UNDEFINED_CHILDREN_STATUS] || !_about[UNDEFINED_CHILDREN_STATUS].hasOwnProperty(key)) return;
+  if (
+    !_about[UNDEFINED_CHILDREN_STATUS] ||
+    !_about[UNDEFINED_CHILDREN_STATUS].hasOwnProperty(key)
+  )
+    return;
 
   delete _about[UNDEFINED_CHILDREN_STATUS][key];
 };
@@ -83,7 +87,10 @@ const calculatedParentChanges = (currentData) => {
       addInnerChangedAbout(parentAbout, outerKey);
     }
 
-    if (!parentAbout[UNDEFINED_CHILDREN_STATUS] || Object.keys(parentAbout[UNDEFINED_CHILDREN_STATUS]).length) {
+    if (
+      !parentAbout[UNDEFINED_CHILDREN_STATUS] ||
+      Object.keys(parentAbout[UNDEFINED_CHILDREN_STATUS]).length
+    ) {
       break;
     } else {
       delete parentAbout[UNDEFINED_CHILDREN_STATUS];
@@ -125,7 +132,13 @@ const getNewAboutData = (outerKey) => {
   };
 };
 
-const calcStatusAndAddToAbout = (newData, oldData, key, _about, inheritStatus) => {
+const calcStatusAndAddToAbout = (
+  newData,
+  oldData,
+  key,
+  _about,
+  inheritStatus
+) => {
   const status = inheritStatus || calcKeyStatus(newData, oldData, key);
 
   if (isCreatedStatus(status)) {
@@ -149,13 +162,7 @@ const calcStatusAndAddToAbout = (newData, oldData, key, _about, inheritStatus) =
 };
 
 module.exports = {
-  setDataChanged,
-  addCreatedToAbout,
-  addDeletedToAbout,
-  addUndefinedChildrenStatus,
-  addUpdatedToAbout,
   enrichWithDataDescribingDifference,
   calculatedParentChanges,
-  addDeletedFieldToData,
   calcStatusAndAddToAbout,
 };
